@@ -61,6 +61,20 @@
             ReferencedContainer = "container:ResignHelper.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
+      <CommandLineArguments>
+         <CommandLineArgument
+            argument = "-i &apos;/Users/jordon/Desktop/ipa/AmaLink 2018-10-17 22-40-01/AmaLink.ipa&apos;"
+            isEnabled = "YES">
+         </CommandLineArgument>
+         <CommandLineArgument
+            argument = "-s asdfa"
+            isEnabled = "YES">
+         </CommandLineArgument>
+         <CommandLineArgument
+            argument = "-p /Users/jordon/Desktop/projects/tw_agent/xcode/agent/overseas2/cert/qyj2Dis.mobileprovision"
+            isEnabled = "YES">
+         </CommandLineArgument>
+      </CommandLineArguments>
       <AdditionalOptions>
       </AdditionalOptions>
    </LaunchAction>

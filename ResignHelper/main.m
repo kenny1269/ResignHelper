@@ -10,6 +10,9 @@
 
 #import "ArgumentParser.h"
 
+#import <mach-o/fat.h>
+#import <mach-o/loader.h>
+
 static NSString *ipaPath;
 static NSString *ipaInDir;
 static NSString *ppPath;
@@ -18,6 +21,7 @@ static NSString *payloadPath;
 static NSString *outputPath;
 
 void cleanUp (void) {
+    NSLog(@"clean up");
     [[NSFileManager defaultManager] removeItemAtPath:payloadPath error:nil];
 }
 
@@ -26,34 +30,32 @@ int main(int argc, const char * argv[]) {
         // insert code here...
         NSLog(@"Resigning...");
         
+        atexit(&cleanUp);
+        
         NSError *error;
         
         [ArgumentParser addArgumentWithKey:@"ipaPath" option:@"-i" description:@"path of ipa to be resigned" required:YES];
         [ArgumentParser addArgumentWithKey:@"signIdentity" option:@"-s" description:@"sign identity of provisioning profile" required:YES];
         [ArgumentParser addArgumentWithKey:@"ppPath" option:@"-p" description:@"path of provisioning profile" required:YES];
         [ArgumentParser addArgumentWithKey:@"outputPath" option:@"-o" description:@"path of ipa resigned" required:NO];
-        
         [ArgumentParser parse];
         
-        if (![[NSFileManager defaultManager] fileExistsAtPath:[ArgumentParser valueForKey:@"ipaPath"]]) {
-            NSLog(@"ipa not exist in %@", [ArgumentParser valueForKey:@"ipaPath"]);
+        ipaPath = [ArgumentParser valueForKey:@"ipaPath"];
+        if (![[NSFileManager defaultManager] fileExistsAtPath:ipaPath]) {
+            NSLog(@"ipa not exist in %@", ipaPath);
             return -1;
         }
         
-        if (![[NSFileManager defaultManager] fileExistsAtPath:[ArgumentParser valueForKey:@"ppPath"]]) {
-            NSLog(@"provisioning profile not exist in %@", [ArgumentParser valueForKey:@"ppPath"]);
+        ppPath = [ArgumentParser valueForKey:@"ppPath"];
+        if (![[NSFileManager defaultManager] fileExistsAtPath:ppPath]) {
+            NSLog(@"provisioning profile not exist in %@", ppPath);
             return -1;
         }
         
-        NSString *ipatToUnzipPath = [ipaInDir stringByAppendingPathComponent:@"ipaToUnzip.ipa"];
-        [[NSFileManager defaultManager] copyItemAtPath:ipaPath toPath:ipatToUnzipPath error:&error];
-        if (error) {
-            NSLog(@"ipa unzip failed with error:%@", error);
-            return -1;
-        }
+        //unzip ipa
         
-        [[NSTask launchedTaskWithExecutableURL:[NSURL fileURLWithPath:@"/usr/bin/unzip"] arguments:@[@"-q", @"-o", ipatToUnzipPath, @"-d", ipaInDir] error:&error terminationHandler:nil] waitUntilExit];
-        [[NSFileManager defaultManager] removeItemAtPath:ipatToUnzipPath error:nil];
+        ipaInDir = [ipaPath stringByDeletingLastPathComponent];
+        [[NSTask launchedTaskWithExecutableURL:[NSURL fileURLWithPath:@"/usr/bin/unzip"] arguments:@[@"-q", @"-o", ipaPath, @"-d", ipaInDir] error:&error terminationHandler:nil] waitUntilExit];
         if (error) {
             NSLog(@"ipa unzip failed with error:%@", error);
             return -1;
@@ -67,6 +69,8 @@ int main(int argc, const char * argv[]) {
                 break;
             }
         }
+        
+        //dump entitlement plist
         
         NSTask *task = [[NSTask alloc] init];
         task.launchPath = @"/usr/bin/security";
@@ -99,6 +103,8 @@ int main(int argc, const char * argv[]) {
             return -1;
         }
         
+        //add pp
+        
         NSString *embeddedPPPath = [appBundlePath stringByAppendingPathComponent:@"embedded.mobileprovision"];
         if ([[NSFileManager defaultManager] fileExistsAtPath:embeddedPPPath]) {
             [[NSFileManager defaultManager] removeItemAtPath:embeddedPPPath error:nil];
@@ -109,32 +115,40 @@ int main(int argc, const char * argv[]) {
             return -1;
         }
         
+        //resign mach-o
+        
+        signIdentity = [ArgumentParser valueForKey:@"signIdentity"];
         NSArray *subpaths = [[NSFileManager defaultManager] subpathsAtPath:appBundlePath];
         for (NSString *subpath in subpaths) {
-            NSString *machoPath;
-            if ([subpath hasSuffix:@".framework"]) {
-                machoPath = [subpath stringByAppendingPathComponent:[[subpath stringByDeletingPathExtension] lastPathComponent]];
+            NSString *path = [appBundlePath stringByAppendingPathComponent:subpath];
+            BOOL isDir;
+            [[NSFileManager defaultManager] fileExistsAtPath:path isDirectory:&isDir];
+            if (!isDir) {
+                NSData *data = [NSData dataWithContentsOfFile:path];
+                uint32_t header;
+                [data getBytes:&header length:sizeof(uint32_t)];
+                
+                if (header == MH_MAGIC || header == MH_CIGAM || header == FAT_MAGIC || header == FAT_CIGAM) {
+                    NSLog(@"string");
+                    [[NSTask launchedTaskWithExecutableURL:[NSURL fileURLWithPath:@"/usr/bin/codesign"] arguments:@[@"-f", @"-s", signIdentity, [appBundlePath stringByAppendingPathComponent:path]] error:nil terminationHandler:nil] waitUntilExit];
+                }
             }
-            if ([subpath hasSuffix:@".dylib"]) {
-                machoPath = subpath;
-            }
-            if (!machoPath) {
-                continue;
-            }
-            [[NSTask launchedTaskWithExecutableURL:[NSURL fileURLWithPath:@"/usr/bin/codesign"] arguments:@[@"-f", @"-s", signIdentity, [appBundlePath stringByAppendingPathComponent:machoPath]] error:nil terminationHandler:nil] waitUntilExit];
         }
         
-        [[NSFileManager defaultManager] removeItemAtPath:[appBundlePath stringByAppendingPathComponent:@"_CodeSignature"] error:nil];
+        //delete _CodeSignature dir
         
+        [[NSFileManager defaultManager] removeItemAtPath:[appBundlePath stringByAppendingPathComponent:@"_CodeSignature"] error:nil];
         [[NSTask launchedTaskWithExecutableURL:[NSURL fileURLWithPath:@"/usr/bin/codesign"] arguments:@[@"-f", @"-s", signIdentity, @"--entitlements", entitlementsPath, appBundlePath] error:&error terminationHandler:nil] waitUntilExit];
         if (error) {
             NSLog(@"code sign app failed with error:%@", error);
             return -1;
         }
         
-        if (![[NSFileManager defaultManager] changeCurrentDirectoryPath:ipaInDir]) {
-            //            NSLog(@"can't change working path");
-        }
+        //change current working dir
+        
+        [[NSFileManager defaultManager] changeCurrentDirectoryPath:ipaInDir];
+        
+        //creat resigned ipa
         
         NSString *targetIpaPath;
         if (outputPath) {

@@ -52,9 +52,10 @@
     for (NSInteger i = 1; i < arguments.count; i++) {
         NSString *argument = arguments[i];
         
-        Argument *a = self.arguments[argument];
-        if (a) {
-            a.value = arguments[i+1];
+        for (Argument *a in self.arguments.allValues) {
+            if ([a.option isEqualToString:argument]) {
+                a.value = arguments[i+1];
+            }
         }
     }
     
