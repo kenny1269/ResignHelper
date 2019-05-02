@@ -61,24 +61,6 @@
             ReferencedContainer = "container:ResignHelper.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
-      <CommandLineArguments>
-         <CommandLineArgument
-            argument = "-i /Users/junhai/Downloads/&#x4fee;&#x4ed9;/target.ipa"
-            isEnabled = "YES">
-         </CommandLineArgument>
-         <CommandLineArgument
-            argument = "-o /Users/junhai/Downloads/hahahha"
-            isEnabled = "YES">
-         </CommandLineArgument>
-         <CommandLineArgument
-            argument = "-s EA5BD946A937164EE0343CF1AD5F5BB0CC188AD1"
-            isEnabled = "YES">
-         </CommandLineArgument>
-         <CommandLineArgument
-            argument = "-p /Users/junhai/Downloads/&#x4fee;&#x4ed9;/TestAppService.mobileprovision"
-            isEnabled = "YES">
-         </CommandLineArgument>
-      </CommandLineArguments>
       <AdditionalOptions>
       </AdditionalOptions>
    </LaunchAction>

@@ -2,11 +2,13 @@
 //  main.m
 //  ResignHelper
 //
-//  Created by junhai on 2019/4/29.
-//  Copyright © 2019年 junhai. All rights reserved.
+//  Created by ky on 2019/4/29.
+//  Copyright © 2019年 ky. All rights reserved.
 //
 
 #import <Foundation/Foundation.h>
+
+#import "ArgumentParser.h"
 
 static NSString *ipaPath;
 static NSString *ipaInDir;
@@ -22,55 +24,24 @@ void cleanUp (void) {
 int main(int argc, const char * argv[]) {
     @autoreleasepool {
         // insert code here...
-        NSLog(@"Hello, World!");
+        NSLog(@"Resigning...");
         
         NSError *error;
         
-        NSArray *arguments = [[NSProcessInfo processInfo] arguments];
+        [ArgumentParser addArgumentWithKey:@"ipaPath" option:@"-i" description:@"path of ipa to be resigned" required:YES];
+        [ArgumentParser addArgumentWithKey:@"signIdentity" option:@"-s" description:@"sign identity of provisioning profile" required:YES];
+        [ArgumentParser addArgumentWithKey:@"ppPath" option:@"-p" description:@"path of provisioning profile" required:YES];
+        [ArgumentParser addArgumentWithKey:@"outputPath" option:@"-o" description:@"path of ipa resigned" required:NO];
         
-        for (NSInteger i = 1; i < arguments.count; i++) {
-            NSString *argument = arguments[i];
-            
-            if ([argument isEqualToString:@"-p"]) {
-                
-                ppPath = arguments[i+1];
-                
-                if (![[NSFileManager defaultManager] fileExistsAtPath:ipaPath]) {
-                    NSLog(@"provisioning profile not exist in %@", ipaPath);
-                    return -1;
-                }
-                
-            } else if ([argument isEqualToString:@"-i"]) {
-                
-                ipaPath = arguments[i+1];
-                
-                if (![[NSFileManager defaultManager] fileExistsAtPath:ipaPath]) {
-                    NSLog(@"ipa not exist in %@", ipaPath);
-                    return -1;
-                }
-                
-                ipaInDir = [ipaPath stringByDeletingLastPathComponent];
-                
-            } else if ([argument isEqualToString:@"-o"]) {
-                outputPath = arguments[i+1];
-                
-            } else if ([argument isEqualToString:@"-s"]) {
-                signIdentity = arguments[i+1];
-            }
-        }
+        [ArgumentParser parse];
         
-        if (!ipaPath) {
-            NSLog(@"need to specify ipa path with -i");
+        if (![[NSFileManager defaultManager] fileExistsAtPath:[ArgumentParser valueForKey:@"ipaPath"]]) {
+            NSLog(@"ipa not exist in %@", [ArgumentParser valueForKey:@"ipaPath"]);
             return -1;
         }
         
-        if (!ppPath) {
-            NSLog(@"need to specify provisioning profile path with -p");
-            return -1;
-        }
-        
-        if (!signIdentity) {
-            NSLog(@"need to specify sign identity path with -s");
+        if (![[NSFileManager defaultManager] fileExistsAtPath:[ArgumentParser valueForKey:@"ppPath"]]) {
+            NSLog(@"provisioning profile not exist in %@", [ArgumentParser valueForKey:@"ppPath"]);
             return -1;
         }
         
@@ -162,7 +133,7 @@ int main(int argc, const char * argv[]) {
         }
         
         if (![[NSFileManager defaultManager] changeCurrentDirectoryPath:ipaInDir]) {
-//            NSLog(@"can't change working path");
+            //            NSLog(@"can't change working path");
         }
         
         NSString *targetIpaPath;
