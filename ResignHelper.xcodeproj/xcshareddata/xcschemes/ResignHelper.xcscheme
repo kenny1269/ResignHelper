@@ -67,7 +67,7 @@
             isEnabled = "YES">
          </CommandLineArgument>
          <CommandLineArgument
-            argument = "-s asdfa"
+            argument = "-s D1DF17F906744C97A50FE42FAA8F42B34D3BC30C"
             isEnabled = "YES">
          </CommandLineArgument>
          <CommandLineArgument

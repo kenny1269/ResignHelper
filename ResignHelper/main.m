@@ -55,9 +55,13 @@ int main(int argc, const char * argv[]) {
         //unzip ipa
         
         ipaInDir = [ipaPath stringByDeletingLastPathComponent];
-        [[NSTask launchedTaskWithExecutableURL:[NSURL fileURLWithPath:@"/usr/bin/unzip"] arguments:@[@"-q", @"-o", ipaPath, @"-d", ipaInDir] error:&error terminationHandler:nil] waitUntilExit];
-        if (error) {
-            NSLog(@"ipa unzip failed with error:%@", error);
+        NSTask *unzipTask = [[NSTask alloc] init];
+        unzipTask.launchPath = @"/usr/bin/unzip";
+        unzipTask.arguments = @[@"-q", @"-o", ipaPath, @"-d", ipaInDir];
+        [unzipTask launch];
+        [unzipTask waitUntilExit];
+        if (unzipTask.terminationStatus != 0) {
+            NSLog(@"ipa unzip failed with status:%d", unzipTask.terminationStatus);
             return -1;
         }
         
@@ -78,9 +82,10 @@ int main(int argc, const char * argv[]) {
         NSPipe *pipe = [NSPipe pipe];
         task.standardOutput = pipe;
         NSFileHandle *handle = [pipe fileHandleForReading];
-        [task launchAndReturnError:&error];
-        if (error) {
-            NSLog(@"dump entitlements error:%@", error);
+        [task launch];
+        [task waitUntilExit];
+        if (task.terminationStatus != 0) {
+            NSLog(@"security cms failed with status:%d", task.terminationStatus);
             return -1;
         }
         
@@ -129,8 +134,15 @@ int main(int argc, const char * argv[]) {
                 [data getBytes:&header length:sizeof(uint32_t)];
                 
                 if (header == MH_MAGIC || header == MH_CIGAM || header == FAT_MAGIC || header == FAT_CIGAM) {
-                    NSLog(@"string");
-                    [[NSTask launchedTaskWithExecutableURL:[NSURL fileURLWithPath:@"/usr/bin/codesign"] arguments:@[@"-f", @"-s", signIdentity, [appBundlePath stringByAppendingPathComponent:path]] error:nil terminationHandler:nil] waitUntilExit];
+                    NSTask *task = [[NSTask alloc] init];
+                    task.launchPath = @"/usr/bin/codesign";
+                    task.arguments = @[@"-f", @"-s", signIdentity, path];
+                    [task launch];
+                    [task waitUntilExit];
+                    if (task.terminationStatus != 0) {
+                        NSLog(@"code sign failed with status:%d", task.terminationStatus);
+                        return -1;
+                    }
                 }
             }
         }
@@ -138,9 +150,16 @@ int main(int argc, const char * argv[]) {
         //delete _CodeSignature dir
         
         [[NSFileManager defaultManager] removeItemAtPath:[appBundlePath stringByAppendingPathComponent:@"_CodeSignature"] error:nil];
-        [[NSTask launchedTaskWithExecutableURL:[NSURL fileURLWithPath:@"/usr/bin/codesign"] arguments:@[@"-f", @"-s", signIdentity, @"--entitlements", entitlementsPath, appBundlePath] error:&error terminationHandler:nil] waitUntilExit];
-        if (error) {
-            NSLog(@"code sign app failed with error:%@", error);
+        
+        //code sign app
+        
+        NSTask *codeSignTask = [[NSTask alloc] init];
+        codeSignTask.launchPath = @"/usr/bin/codesign";
+        codeSignTask.arguments = @[@"-f", @"-s", signIdentity, @"--entitlements", entitlementsPath, appBundlePath];
+        [codeSignTask launch];
+        [codeSignTask waitUntilExit];
+        if (codeSignTask.terminationStatus != 0) {
+            NSLog(@"code sign app failed with status:%d", codeSignTask.terminationStatus);
             return -1;
         }
         
@@ -148,7 +167,7 @@ int main(int argc, const char * argv[]) {
         
         [[NSFileManager defaultManager] changeCurrentDirectoryPath:ipaInDir];
         
-        //creat resigned ipa
+        //create resigned ipa
         
         NSString *targetIpaPath;
         if (outputPath) {
@@ -160,13 +179,15 @@ int main(int argc, const char * argv[]) {
             targetIpaPath = [ipaInDir stringByAppendingPathComponent:[NSString stringWithFormat:@"%@-resigned.ipa", [[ipaPath stringByDeletingPathExtension] lastPathComponent]]];
         }
         
-        [[NSTask launchedTaskWithExecutableURL:[NSURL fileURLWithPath:@"/usr/bin/zip"] arguments:@[@"-q", @"-r", targetIpaPath, @"Payload"] error:&error terminationHandler:nil] waitUntilExit];
-        if (error) {
-            NSLog(@"zip payload failed with error:%@", error);
+        NSTask *createIpaTask = [[NSTask alloc] init];
+        createIpaTask.launchPath = @"/usr/bin/zip";
+        createIpaTask.arguments = @[@"-q", @"-r", targetIpaPath, @"Payload"];
+        [createIpaTask launch];
+        [createIpaTask waitUntilExit];
+        if (createIpaTask.terminationStatus != 0) {
+            NSLog(@"code sign app failed with status:%d", createIpaTask.terminationStatus);
             return -1;
         }
-        
-        cleanUp();
         
         NSLog(@"resign complete!");
         NSLog(@"output path:%@", targetIpaPath);
