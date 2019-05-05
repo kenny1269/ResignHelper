@@ -21,8 +21,9 @@ static NSString *payloadPath;
 static NSString *outputPath;
 
 void cleanUp (void) {
-    NSLog(@"clean up");
-    [[NSFileManager defaultManager] removeItemAtPath:payloadPath error:nil];
+    if (payloadPath) {
+        [[NSFileManager defaultManager] removeItemAtPath:payloadPath error:nil];
+    }
 }
 
 int main(int argc, const char * argv[]) {
@@ -55,6 +56,14 @@ int main(int argc, const char * argv[]) {
         //unzip ipa
         
         ipaInDir = [ipaPath stringByDeletingLastPathComponent];
+        BOOL isDir;
+        if ([[NSFileManager defaultManager] fileExistsAtPath:[ipaInDir stringByAppendingPathComponent:@"Payload"] isDirectory:&isDir]) {
+            if (isDir) {
+                NSLog(@"there is already a Payload directory in %@, please remove the Payload directory first", ipaInDir);
+                return -1;
+            }
+        }
+        
         NSTask *unzipTask = [[NSTask alloc] init];
         unzipTask.launchPath = @"/usr/bin/unzip";
         unzipTask.arguments = @[@"-q", @"-o", ipaPath, @"-d", ipaInDir];
@@ -132,8 +141,8 @@ int main(int argc, const char * argv[]) {
                 NSData *data = [NSData dataWithContentsOfFile:path];
                 uint32_t header;
                 [data getBytes:&header length:sizeof(uint32_t)];
-                
-                if (header == MH_MAGIC || header == MH_CIGAM || header == FAT_MAGIC || header == FAT_CIGAM) {
+
+                if (header == MH_MAGIC_64 || header == MH_CIGAM_64 || header == FAT_MAGIC_64 || header == FAT_CIGAM_64) {
                     NSTask *task = [[NSTask alloc] init];
                     task.launchPath = @"/usr/bin/codesign";
                     task.arguments = @[@"-f", @"-s", signIdentity, path];
@@ -146,9 +155,9 @@ int main(int argc, const char * argv[]) {
                 }
             }
         }
-        
+
         //delete _CodeSignature dir
-        
+
         [[NSFileManager defaultManager] removeItemAtPath:[appBundlePath stringByAppendingPathComponent:@"_CodeSignature"] error:nil];
         
         //code sign app
@@ -156,7 +165,7 @@ int main(int argc, const char * argv[]) {
         NSTask *codeSignTask = [[NSTask alloc] init];
         codeSignTask.launchPath = @"/usr/bin/codesign";
         codeSignTask.arguments = @[@"-f", @"-s", signIdentity, @"--entitlements", entitlementsPath, appBundlePath];
-        [codeSignTask launch];
+        [codeSignTask launchAndReturnError:&error];
         [codeSignTask waitUntilExit];
         if (codeSignTask.terminationStatus != 0) {
             NSLog(@"code sign app failed with status:%d", codeSignTask.terminationStatus);
@@ -179,6 +188,12 @@ int main(int argc, const char * argv[]) {
             targetIpaPath = [ipaInDir stringByAppendingPathComponent:[NSString stringWithFormat:@"%@-resigned.ipa", [[ipaPath stringByDeletingPathExtension] lastPathComponent]]];
         }
         
+        if ([[NSFileManager defaultManager] fileExistsAtPath:targetIpaPath isDirectory:&isDir]) {
+            if (!isDir) {
+                [[NSFileManager defaultManager] removeItemAtPath:targetIpaPath error:nil];
+            }
+        }
+        
         NSTask *createIpaTask = [[NSTask alloc] init];
         createIpaTask.launchPath = @"/usr/bin/zip";
         createIpaTask.arguments = @[@"-q", @"-r", targetIpaPath, @"Payload"];
@@ -189,8 +204,8 @@ int main(int argc, const char * argv[]) {
             return -1;
         }
         
-        NSLog(@"resign complete!");
         NSLog(@"output path:%@", targetIpaPath);
+        NSLog(@"resign complete!");
     }
     return 0;
 }
