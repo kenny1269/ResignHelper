@@ -14,3 +14,7 @@ Command line tool, build then use.
 -p: path of provisioning profile
 
 -o: output path of resigned ipa (optional)
+
+## Attention
+
+Provisioning profile should contain a Wildcard App ID (*), or resign will failed
