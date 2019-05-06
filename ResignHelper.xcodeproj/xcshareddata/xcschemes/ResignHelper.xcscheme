@@ -63,15 +63,15 @@
       </BuildableProductRunnable>
       <CommandLineArguments>
          <CommandLineArgument
-            argument = "-i &apos;/Users/jordon/Desktop/ipa/AmaLink 2018-10-17 22-40-01/AmaLink.ipa&apos;"
+            argument = "-i /Users/junhai/Downloads/test.ipa"
             isEnabled = "YES">
          </CommandLineArgument>
          <CommandLineArgument
-            argument = "-s D1DF17F906744C97A50FE42FAA8F42B34D3BC30C"
+            argument = "-s EA5BD946A937164EE0343CF1AD5F5BB0CC188AD1"
             isEnabled = "YES">
          </CommandLineArgument>
          <CommandLineArgument
-            argument = "-p /Users/jordon/Desktop/projects/tw_agent/xcode/agent/overseas2/cert/qyj2Dis.mobileprovision"
+            argument = "-p /Users/junhai/Desktop/&#x9a6c;&#x7532;&#x5305;/&#x4fee;&#x4ed9;/TestAppService.mobileprovision"
             isEnabled = "YES">
          </CommandLineArgument>
       </CommandLineArguments>

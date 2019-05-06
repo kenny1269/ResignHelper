@@ -54,7 +54,9 @@
         
         for (Argument *a in self.arguments.allValues) {
             if ([a.option isEqualToString:argument]) {
-                a.value = arguments[i+1];
+                if (i+1 < arguments.count) {
+                    a.value = arguments[i+1];
+                }
             }
         }
     }

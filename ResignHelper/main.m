@@ -142,7 +142,7 @@ int main(int argc, const char * argv[]) {
                 uint32_t header;
                 [data getBytes:&header length:sizeof(uint32_t)];
 
-                if (header == MH_MAGIC_64 || header == MH_CIGAM_64 || header == FAT_MAGIC_64 || header == FAT_CIGAM_64) {
+                if (header == MH_MAGIC_64 || header == MH_CIGAM_64 || header == FAT_MAGIC_64 || header == FAT_MAGIC || header == FAT_CIGAM_64 || header == FAT_CIGAM) {
                     NSTask *task = [[NSTask alloc] init];
                     task.launchPath = @"/usr/bin/codesign";
                     task.arguments = @[@"-f", @"-s", signIdentity, path];
@@ -179,6 +179,7 @@ int main(int argc, const char * argv[]) {
         //create resigned ipa
         
         NSString *targetIpaPath;
+        outputPath = [ArgumentParser valueForKey:@"outputPath"];
         if (outputPath) {
             if (![[NSFileManager defaultManager] fileExistsAtPath:outputPath]) {
                 [[NSFileManager defaultManager] createDirectoryAtPath:outputPath withIntermediateDirectories:YES attributes:nil error:nil];
